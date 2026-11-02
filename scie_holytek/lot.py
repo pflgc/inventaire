@@ -73,7 +73,7 @@ def preparer_lot(unites, regles, chutes, no_lot, dossier):
     with open(
         os.path.join(dossier, f"{no_lot}.csv"), "w", encoding="cp1252", errors="replace", newline=""
     ) as f:
-        f.write(cedule_mi_texte(resultat, regles.get("unite_cedule", "mm")))
+        f.write(cedule_mi_texte(resultat, regles.get("unite_cedule", "mm"), chute_min=params.chute_min))
     with open(os.path.join(dossier, f"{no_lot}-feuille.html"), "w", encoding="utf-8") as f:
         f.write(feuille_operateur_html(resultat, no_lot))
     with open(os.path.join(dossier, f"{no_lot}-chutes.csv"), "w", encoding="utf-8", newline="") as f:

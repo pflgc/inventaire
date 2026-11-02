@@ -68,7 +68,15 @@ def chargements(resultat):
     return groupes
 
 
-def ligne_mi(chargement, unite="mm"):
+def instruction_reste(chargement, chute_min=300):
+    """Ce que l'opérateur fait du bout restant, affiché dans le champ Matériel."""
+    reste = int(round(chargement.get("reste", 0)))
+    if reste >= chute_min:
+        return f"RESTE {reste}MM: GARDER + ETIQUETTE"
+    return f"RESTE {reste}MM: REBUT"
+
+
+def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
     morceaux = chargement["morceaux"]
     if len(morceaux) > MAX_MORCEAUX:
         raise ValueError(f"MIEbouteuse accepte au plus {MAX_MORCEAUX} morceaux par barre")
@@ -77,7 +85,11 @@ def ligne_mi(chargement, unite="mm"):
     reste = chargement.get("reste", chargement["longueur_barre"] - sum(l for _, l in morceaux))
     champs = [
         _nombre(_convertir(reste, unite)),
-        _nettoyer(chargement["materiel"]),
+        _nettoyer(
+            f"{chargement['materiel']} - {instruction_reste(chargement, chute_min)}"
+            if afficher_reste
+            else chargement["materiel"]
+        ),
         _nombre(_convertir(chargement["longueur_barre"], unite)),
         str(chargement["nb"]),
     ]
@@ -87,8 +99,10 @@ def ligne_mi(chargement, unite="mm"):
     return ";".join(champs)
 
 
-def cedule_mi_texte(resultat, unite="mm"):
-    return "".join(ligne_mi(c, unite) + "\r\n" for c in chargements(resultat))
+def cedule_mi_texte(resultat, unite="mm", afficher_reste=True, chute_min=300):
+    return "".join(
+        ligne_mi(c, unite, afficher_reste, chute_min) + "\r\n" for c in chargements(resultat)
+    )
 
 
 def ecrire_cedule_mi(resultat, flux, unite="mm"):

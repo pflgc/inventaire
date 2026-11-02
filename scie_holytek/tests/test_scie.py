@@ -115,7 +115,7 @@ class TestEmpilage(unittest.TestCase):
         self.assertEqual(passe.empilage, 2)
         self.assertEqual([[x.longueur for x in c] for c in passe.copies], [[3000, 2900], [3000, 2900]])
         self.assertEqual(res.statistiques()["barres_neuves"], 2)
-        champs = cedule_mi_texte(res).split("\r\n")[0].split(";")
+        champs = cedule_mi_texte(res, afficher_reste=False).split("\r\n")[0].split(";")
         self.assertEqual(champs[1:8], ["P", "6000", "2", "A / B", "3000", "C / D", "2900"])
 
     def test_morceau_sans_jumeau_coupe_seul(self):
@@ -176,13 +176,19 @@ class TestSorties(unittest.TestCase):
     def test_cedule_groupe_les_barres_identiques(self):
         morceaux = [m(3100, code="A"), m(2800, code="B"), m(3100, code="C"), m(2800, code="D")]
         res = optimiser(morceaux, [Stock("P", 6000)], SANS_PERTE)
-        texte = cedule_mi_texte(res)
+        texte = cedule_mi_texte(res, afficher_reste=False)
         self.assertTrue(texte.endswith("\r\n"))
         lignes = texte.split("\r\n")[:-1]
         self.assertEqual(len(lignes), 1)
         champs = lignes[0].split(";")
         self.assertEqual(len(champs), 64)
         self.assertEqual(champs[:8], ["100", "P", "6000", "2", "A / C", "3100", "B / D", "2800"])
+
+    def test_instruction_reste_dans_materiel(self):
+        rebut = optimiser([m(5900)], [Stock("P", 6000)], SANS_PERTE)
+        garder = optimiser([m(5000)], [Stock("P", 6000)], SANS_PERTE)
+        self.assertEqual(cedule_mi_texte(rebut).split(";")[1], "P - RESTE 100MM: REBUT")
+        self.assertEqual(cedule_mi_texte(garder).split(";")[1], "P - RESTE 1000MM: GARDER + ETIQUETTE")
 
     def test_cedule_en_pouces(self):
         res = optimiser([m(1219.2, code="A")], [Stock("P", 2438)], SANS_PERTE)
