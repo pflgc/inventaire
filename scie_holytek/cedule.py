@@ -32,35 +32,38 @@ def _nettoyer(texte):
 
 
 def chargements(resultat):
-    """Regroupe les barres identiques (même matériel, longueur et coupes).
+    """Regroupe les passes identiques (même matériel, longueur et coupes) en lignes.
 
-    Une chute en inventaire reste seule sur sa ligne : l'opérateur doit savoir
-    laquelle prendre.
+    « nb » = nombre de barres à charger (2 par passe quand elles sont empilées).
+    Une passe sur des chutes en inventaire reste seule sur sa ligne : l'opérateur
+    doit savoir lesquelles prendre.
     """
     groupes = []
     index = {}
-    for barre in resultat.barres_ordonnees():
-        longueurs = tuple(m.longueur for m in barre.morceaux)
-        cle = (barre.materiel, barre.longueur_barre, longueurs)
-        if barre.source.est_chute or cle not in index:
-            if not barre.source.est_chute:
+    for passe in resultat.barres_ordonnees():
+        longueurs = tuple(m.longueur for m in passe.morceaux)
+        cle = (passe.materiel, passe.longueur_barre, longueurs, passe.empilage)
+        if passe.source.est_chute or cle not in index:
+            if not passe.source.est_chute:
                 index[cle] = len(groupes)
-            groupes.append({"materiel": barre.materiel, "longueur_barre": barre.longueur_barre,
-                            "barres": [barre]})
+            groupes.append({"materiel": passe.materiel, "longueur_barre": passe.longueur_barre,
+                            "passes": [passe]})
         else:
-            groupes[index[cle]]["barres"].append(barre)
+            groupes[index[cle]]["passes"].append(passe)
     for groupe in groupes:
-        barres = groupe["barres"]
-        groupe["nb"] = len(barres)
-        groupe["source"] = barres[0].source
-        groupe["reste"] = barres[0].reste
+        passes = groupe["passes"]
+        groupe["nb"] = sum(p.empilage for p in passes)
+        groupe["empilage"] = passes[0].empilage
+        groupe["sources"] = [s for p in passes for s in p.sources]
+        groupe["reste"] = passes[0].reste
         groupe["morceaux"] = []
-        for position, morceau in enumerate(barres[0].morceaux):
+        for position, morceau in enumerate(passes[0].morceaux):
             etiquettes = []
-            for b in barres:
-                e = b.morceaux[position].code
-                if e not in etiquettes:
-                    etiquettes.append(e)
+            for p in passes:
+                for copie in p.copies:
+                    e = copie[position].code
+                    if e not in etiquettes:
+                        etiquettes.append(e)
             groupe["morceaux"].append((" / ".join(etiquettes), morceau.longueur))
     return groupes
 
@@ -97,16 +100,21 @@ def feuille_operateur_html(resultat, no_lot):
     stats = resultat.statistiques()
     rangs = []
     for no, ch in enumerate(chargements(resultat), start=1):
-        source = ch["source"]
-        prendre = (
-            f"Chute {html.escape(source.reference)} {html.escape(source.emplacement)}"
-            if source.est_chute
-            else f"{ch['nb']} barre(s) neuve(s)"
-        )
+        if ch["sources"][0].est_chute:
+            prendre = "<br>".join(
+                f"Chute {html.escape(s.reference)} ({s.longueur} mm) {html.escape(s.emplacement)}"
+                for s in ch["sources"]
+            )
+        else:
+            prendre = f"{ch['nb']} barre(s) neuve(s)"
+        if ch["empilage"] > 1:
+            prendre += f"<br><b>{ch['empilage']} barres empilées</b>"
+        else:
+            prendre += "<br><b>1 barre seule</b>"
         morceaux = "<br>".join(
             f"{_nombre(l)} mm — {html.escape(e)}" for e, l in ch["morceaux"]
         )
-        barre = ch["barres"][0]
+        barre = ch["passes"][0]
         fin = f"GARDER chute {barre.reste} mm" if barre.chute_gardee else f"rebut {barre.reste} mm"
         rangs.append(
             f"<tr><td>{no}</td><td>{html.escape(ch['materiel'])}</td>"

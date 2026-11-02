@@ -61,7 +61,10 @@ def lire_chutes(chemin):
 
 def preparer_lot(unites, regles, chutes, no_lot, dossier):
     params = ParametresScie(**regles.get("parametres_scie", {}))
-    barres_neuves = [Stock(materiel=b["materiel"], longueur=b["longueur"]) for b in regles["barres"]]
+    barres_neuves = [
+        Stock(materiel=b["materiel"], longueur=b["longueur"], empilage=b.get("empilage", 0))
+        for b in regles["barres"]
+    ]
     morceaux = morceaux_pour_lot(unites, regles)
     resultat = optimiser(morceaux, barres_neuves + chutes, params)
 
@@ -77,10 +80,11 @@ def preparer_lot(unites, regles, chutes, no_lot, dossier):
         ecrivain = csv.writer(f, delimiter=";")
         ecrivain.writerow(["reference", "materiel", "longueur", "emplacement"])
         numero = 1
-        for barre in resultat.barres_ordonnees():
-            if barre.chute_gardee:
-                ecrivain.writerow([f"{no_lot}-CH{numero:03d}", barre.materiel, barre.reste, ""])
-                numero += 1
+        for passe in resultat.barres_ordonnees():
+            for reste in passe.restes:
+                if reste >= params.chute_min:
+                    ecrivain.writerow([f"{no_lot}-CH{numero:03d}", passe.materiel, reste, ""])
+                    numero += 1
     return resultat
 
 

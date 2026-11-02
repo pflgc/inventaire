@@ -12,7 +12,8 @@ from scie_holytek.regles import Morceau, Unite, charger_regles, evaluer, morceau
 
 ICI = os.path.dirname(__file__)
 REGLES = charger_regles(os.path.join(ICI, "..", "regles_exemple.json"))
-SANS_PERTE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300)
+SANS_PERTE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300, empilage_defaut=1)
+EMPILE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300, empilage_defaut=2)
 
 
 def m(longueur, materiel="P", code=None):
@@ -61,7 +62,7 @@ class TestOptimiseur(unittest.TestCase):
         self.assertEqual(res.statistiques()["rebut_mm"], 0)
 
     def test_trait_de_scie_compte(self):
-        params = ParametresScie(trait_scie=4, perte_debut=0, perte_fin=0, chute_min=300)
+        params = ParametresScie(trait_scie=4, perte_debut=0, perte_fin=0, chute_min=300, empilage_defaut=1)
         # 2 x 3000 + 2 traits = 6008 > 6000 : il faut deux barres
         res = optimiser([m(3000), m(3000)], [Stock("P", 6000)], params)
         self.assertEqual(len(res.barres), 2)
@@ -94,7 +95,7 @@ class TestOptimiseur(unittest.TestCase):
     def test_aucun_morceau_perdu_ni_double(self):
         hasard = random.Random(7)
         morceaux = [m(hasard.randint(200, 2500)) for _ in range(200)]
-        params = ParametresScie()
+        params = ParametresScie(empilage_defaut=1)
         res = optimiser(morceaux, [Stock("P", 5800)], params)
         places = [x for b in res.barres for x in b.morceaux]
         self.assertEqual(sorted(map(id, places)), sorted(map(id, morceaux)))
@@ -102,6 +103,54 @@ class TestOptimiseur(unittest.TestCase):
             consomme = params.perte_debut + sum(x.longueur + params.trait_scie for x in b.morceaux)
             self.assertLessEqual(consomme, b.longueur_barre - params.perte_fin)
         self.assertLess(res.statistiques()["perte_pct"], 5)
+
+
+class TestEmpilage(unittest.TestCase):
+    def test_jumeaux_coupes_ensemble(self):
+        # 2 x 3000 + 2 x 2900 : une seule passe de 2 barres empilées
+        morceaux = [m(3000, code="A"), m(3000, code="B"), m(2900, code="C"), m(2900, code="D")]
+        res = optimiser(morceaux, [Stock("P", 6000)], EMPILE)
+        self.assertEqual(len(res.barres), 1)
+        passe = res.barres[0]
+        self.assertEqual(passe.empilage, 2)
+        self.assertEqual([[x.longueur for x in c] for c in passe.copies], [[3000, 2900], [3000, 2900]])
+        self.assertEqual(res.statistiques()["barres_neuves"], 2)
+        champs = cedule_mi_texte(res).split("\r\n")[0].split(";")
+        self.assertEqual(champs[1:8], ["P", "6000", "2", "A / B", "3000", "C / D", "2900"])
+
+    def test_morceau_sans_jumeau_coupe_seul(self):
+        res = optimiser([m(1000), m(1000), m(1500)], [Stock("P", 6000)], EMPILE)
+        self.assertEqual(sorted(p.empilage for p in res.barres), [1, 2])
+        seule = next(p for p in res.barres if p.empilage == 1)
+        self.assertEqual([x.longueur for x in seule.morceaux], [1500])
+
+    def test_meneau_jamais_empile(self):
+        morceaux = [m(1000, "MENEAU"), m(1000, "MENEAU"), m(1000, "PARCLOSE"), m(1000, "PARCLOSE")]
+        stocks = [Stock("MENEAU", 6000, empilage=1), Stock("PARCLOSE", 6000)]
+        res = optimiser(morceaux, stocks, EMPILE)
+        empilages = {p.materiel: p.empilage for p in res.barres}
+        self.assertEqual(empilages, {"MENEAU": 1, "PARCLOSE": 2})
+        meneau = next(p for p in res.barres if p.materiel == "MENEAU")
+        self.assertEqual(len(meneau.morceaux), 2)
+
+    def test_paire_de_chutes(self):
+        chutes = [Stock("P", 1300, reference="CH-1", quantite=1), Stock("P", 1250, reference="CH-2", quantite=1)]
+        res = optimiser([m(1200), m(1200)], [Stock("P", 6000)] + chutes, EMPILE)
+        passe = res.barres[0]
+        self.assertEqual(sorted(s.reference for s in passe.sources), ["CH-1", "CH-2"])
+        self.assertEqual(passe.longueur_barre, 1250)  # la plus courte des deux
+        self.assertEqual(sorted(passe.restes), [50, 100])
+        self.assertEqual(res.statistiques()["barres_neuves"], 0)
+
+    def test_aucun_morceau_perdu_en_empilage(self):
+        hasard = random.Random(11)
+        morceaux = [m(hasard.choice([400, 650, 900, 1225, 1800, 2100])) for _ in range(151)]
+        res = optimiser(morceaux, [Stock("P", 5800)], ParametresScie())
+        places = [x for p in res.barres for c in p.copies for x in c]
+        self.assertEqual(sorted(map(id, places)), sorted(map(id, morceaux)))
+        for p in res.barres:
+            longueurs = [[x.longueur for x in c] for c in p.copies]
+            self.assertTrue(all(l == longueurs[0] for l in longueurs))
 
 
 class TestSorties(unittest.TestCase):
@@ -161,7 +210,10 @@ class TestSorties(unittest.TestCase):
             Unite("C9001/F1", "fenetre_fixe_pvc", 1200, 900, nb_meneaux_v=1, profondeur=150),
             Unite("C9001/F2", "fenetre_fixe_pvc", 600, 1500, quantite=2),
         ]
-        chutes = [Stock("PARCLOSE-PVC-BLANC", 1500, reference="CH-9", quantite=1)]
+        chutes = [
+            Stock("PARCLOSE-PVC-BLANC", 1500, reference="CH-9", quantite=1),
+            Stock("PARCLOSE-PVC-BLANC", 1450, reference="CH-10", quantite=1),
+        ]
         with tempfile.TemporaryDirectory() as dossier:
             res = preparer_lot(unites, REGLES, chutes, "L-0001", dossier)
             self.assertEqual(
@@ -169,7 +221,7 @@ class TestSorties(unittest.TestCase):
                 ["L-0001-chutes.csv", "L-0001-feuille.html", "L-0001.csv"],
             )
         self.assertFalse(res.non_places)
-        self.assertEqual(res.statistiques()["chutes_utilisees"], 1)
+        self.assertEqual(res.statistiques()["chutes_utilisees"], 2)
 
 
 if __name__ == "__main__":

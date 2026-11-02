@@ -10,7 +10,7 @@ MIEbouteuse ne fait que pousser et couper.
 |---|---|
 | `regles.py` | Déductions : d'une fenêtre (L, H, meneaux, mur) à la liste des morceaux. Formules sécuritaires, modifiables sans code. |
 | `regles_exemple.json` | Règles par type de produit, longueurs de barres, trait de scie, chute minimale. **Chiffres d'exemple, À CONFIRMER.** |
-| `optimiseur.py` | Place les morceaux dans les barres : chutes en inventaire d'abord, puis barres neuves, remplissage exact au mm. |
+| `optimiseur.py` | Place les morceaux dans les barres : **2 barres empilées par coupe** (sauf meneaux : 1), morceaux jumelés par longueur, chutes en inventaire d'abord (par paires), puis barres neuves, remplissage exact au mm. |
 | `cedule.py` | Écrit la cédule CSV pour MIEbouteuse et la feuille de l'opérateur (code-barres du lot). **Format CSV provisoire.** |
 | `lot.py` | Tout l'enchaînement en une commande. |
 | `essai/ESSAI-LGC-mm.csv` | Cédule d'essai à ouvrir dans MIEbouteuse en **Mode Manuel** seulement. |

@@ -7,13 +7,14 @@
     "perte_debut": 10,
     "perte_fin": 50,
     "chute_min": 300,
-    "max_morceaux": 30
+    "max_morceaux": 30,
+    "empilage_defaut": 2
   },
   "barres": [
     {"materiel": "PARCLOSE-PVC-BLANC", "longueur": 5800},
     {"materiel": "BOISERIE-L4671-BLANC", "longueur": 5800},
     {"materiel": "SOUFFLAGE-PVC-BLANC", "longueur": 4877},
-    {"materiel": "MENEAU-PVC-BLANC", "longueur": 5800}
+    {"materiel": "MENEAU-PVC-BLANC", "longueur": 5800, "empilage": 1}
   ],
   "produits": {
     "fenetre_fixe_pvc": {
