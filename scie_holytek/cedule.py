@@ -14,6 +14,9 @@ import html
 import io
 
 MAX_MORCEAUX = 30
+# MIEbouteuse refuse un texte trop long (erreur 3163 « The field is too small »).
+# 23 caractères = le plus long vu dans la cédule Mec-Inov; on ne dépasse jamais ça.
+LIMITE_TEXTE = 23
 MM_PAR_POUCE = 25.4
 
 
@@ -28,7 +31,17 @@ def _convertir(mm, unite):
 
 
 def _nettoyer(texte):
-    return texte.replace(";", ",").replace("\r", " ").replace("\n", " ")
+    texte = texte.replace(";", ",").replace("\r", " ").replace("\n", " ")
+    return texte[:LIMITE_TEXTE]
+
+
+def _joindre(etiquettes):
+    """« A / B » comme Mec-Inov si ça entre, sinon « A +1 »."""
+    texte = " / ".join(etiquettes)
+    if len(texte) <= LIMITE_TEXTE:
+        return texte
+    suffixe = f" +{len(etiquettes) - 1}" if len(etiquettes) > 1 else ""
+    return etiquettes[0][: LIMITE_TEXTE - len(suffixe)] + suffixe
 
 
 def chargements(resultat):
@@ -64,16 +77,14 @@ def chargements(resultat):
                     e = copie[position].code
                     if e not in etiquettes:
                         etiquettes.append(e)
-            groupe["morceaux"].append((" / ".join(etiquettes), morceau.longueur))
+            groupe["morceaux"].append((_joindre(etiquettes), morceau.longueur))
     return groupes
 
 
 def instruction_reste(chargement, chute_min=300):
-    """Ce que l'opérateur fait du bout restant, affiché dans le champ Matériel."""
+    """Ce que l'opérateur fait du bout restant (court : les champs sont limités)."""
     reste = int(round(chargement.get("reste", 0)))
-    if reste >= chute_min:
-        return f"RESTE {reste}MM: GARDER + ETIQUETTE"
-    return f"RESTE {reste}MM: REBUT"
+    return f">GARDER {reste}" if reste >= chute_min else f">REBUT {reste}"
 
 
 def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
@@ -85,17 +96,15 @@ def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
     reste = chargement.get("reste", chargement["longueur_barre"] - sum(l for _, l in morceaux))
     champs = [
         _nombre(_convertir(reste, unite)),
-        _nettoyer(
-            f"{chargement['materiel']} - {instruction_reste(chargement, chute_min)}"
-            if afficher_reste
-            else chargement["materiel"]
-        ),
+        _nettoyer(chargement["materiel"]),
         _nombre(_convertir(chargement["longueur_barre"], unite)),
         str(chargement["nb"]),
     ]
     for position, (etiquette, longueur) in enumerate(morceaux, start=1):
         if afficher_reste and position == len(morceaux):
-            etiquette = f"{etiquette} >> {instruction_reste(chargement, chute_min)}"
+            # Sur l'étiquette du dernier morceau : l'instruction passe avant le code.
+            instruction = instruction_reste(chargement, chute_min)
+            etiquette = f"{etiquette[: LIMITE_TEXTE - len(instruction) - 1]} {instruction}"
         champs += [_nettoyer(etiquette), _nombre(_convertir(longueur, unite))]
     champs += [""] * (64 - len(champs))
     return ";".join(champs)

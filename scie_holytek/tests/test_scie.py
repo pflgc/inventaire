@@ -203,11 +203,19 @@ class TestSorties(unittest.TestCase):
         self.assertEqual(len(champs), 64)
         self.assertEqual(champs[:8], ["100", "P", "6000", "2", "A / C", "3100", "B / D", "2800"])
 
-    def test_instruction_reste_dans_materiel(self):
-        rebut = optimiser([m(5900)], [Stock("P", 6000)], SANS_PERTE)
-        garder = optimiser([m(5000)], [Stock("P", 6000)], SANS_PERTE)
-        self.assertEqual(cedule_mi_texte(rebut).split(";")[1], "P - RESTE 100MM: REBUT")
-        self.assertEqual(cedule_mi_texte(garder).split(";")[1], "P - RESTE 1000MM: GARDER + ETIQUETTE")
+    def test_instruction_reste_sur_derniere_etiquette(self):
+        rebut = optimiser([m(5900, code="A")], [Stock("P", 6000)], SANS_PERTE)
+        garder = optimiser([m(5000, code="COMPTOIR 36PO")], [Stock("P", 6000)], SANS_PERTE)
+        self.assertEqual(cedule_mi_texte(rebut).split(";")[1:5], ["P", "6000", "1", "A >REBUT 100"])
+        self.assertTrue(cedule_mi_texte(garder).split(";")[4].endswith(">GARDER 1000"))
+
+    def test_aucun_texte_trop_long(self):
+        longs = [m(1000, "UN MATERIAU AU NOM BEAUCOUP TROP LONG", code="C9019/F1 PARCLOSE HAUT") for _ in range(4)]
+        res = optimiser(longs, [Stock("UN MATERIAU AU NOM BEAUCOUP TROP LONG", 6000)], EMPILE)
+        for ligne in cedule_mi_texte(res).split("\r\n")[:-1]:
+            champs = ligne.split(";")
+            textes = [champs[1]] + champs[4::2]
+            self.assertTrue(all(len(t) <= 23 for t in textes), textes)
 
     def test_cedule_en_pouces(self):
         res = optimiser([m(1219.2, code="A")], [Stock("P", 2438)], SANS_PERTE)
