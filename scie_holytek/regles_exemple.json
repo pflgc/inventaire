@@ -14,8 +14,7 @@
   "barres": [
     {"materiel": "PARCLOSE-PVC-BLANC", "longueur": 5800},
     {"materiel": "BOISERIE-L4671-BLANC", "longueur": 5800},
-    {"materiel": "SOUFFLAGE-PVC-BLANC", "longueur": 4670, "perte_debut": 25, "perte_fin": 127,
-     "_perte": "bout sale ou abîmé au début et à la fin : À CONFIRMER"},
+    {"materiel": "SOUFFLAGE-PVC-BLANC", "longueur": 4670},
     {"materiel": "MENEAU-PVC-BLANC", "longueur": 5800, "empilage": 1}
   ],
   "produits": {
