@@ -205,17 +205,22 @@ class TestSorties(unittest.TestCase):
 
     def test_instruction_reste_sur_derniere_etiquette(self):
         rebut = optimiser([m(5900, code="A")], [Stock("P", 6000)], SANS_PERTE)
-        garder = optimiser([m(5000, code="COMPTOIR 36PO")], [Stock("P", 6000)], SANS_PERTE)
-        self.assertEqual(cedule_mi_texte(rebut).split(";")[1:5], ["P", "6000", "1", "A >REBUT 100"])
-        self.assertTrue(cedule_mi_texte(garder).split(";")[4].endswith(">GARDER 1000"))
+        garder = optimiser([m(3000, code="X"), m(2000, code="Y")], [Stock("P", 6000)], SANS_PERTE)
+        self.assertEqual(cedule_mi_texte(rebut).split(";")[1:5], ["P", "6000", "1", "REBUT 100"])
+        self.assertEqual(cedule_mi_texte(garder).split(";")[4:8], ["X", "3000", "GARDER 1000", "2000"])
 
     def test_aucun_texte_trop_long(self):
-        longs = [m(1000, "UN MATERIAU AU NOM BEAUCOUP TROP LONG", code="C9019/F1 PARCLOSE HAUT") for _ in range(4)]
+        longs = [m(1000, "UN MATERIAU AU NOM BEAUCOUP TROP LONG", code="C9019/F1 PARCLOSE >HAUT") for _ in range(4)]
+        longs += [m(900, "UN MATERIAU AU NOM BEAUCOUP TROP LONG", code=f"C90{i}/F1 PH") for i in range(4)]
         res = optimiser(longs, [Stock("UN MATERIAU AU NOM BEAUCOUP TROP LONG", 6000)], EMPILE)
-        for ligne in cedule_mi_texte(res).split("\r\n")[:-1]:
+        for ligne in cedule_mi_texte(res, afficher_reste=False).split("\r\n")[:-1]:
             champs = ligne.split(";")
-            textes = [champs[1]] + champs[4::2]
-            self.assertTrue(all(len(t) <= 23 for t in textes), textes)
+            self.assertLessEqual(len(champs[1]), 23)
+            for etiquette in [e for e in champs[4::2] if e]:
+                self.assertNotIn(">", etiquette)
+                self.assertLessEqual(len(etiquette), 23)
+                for partie in etiquette.split(" / "):
+                    self.assertLessEqual(len(partie), 13, etiquette)
 
     def test_cedule_en_pouces(self):
         res = optimiser([m(1219.2, code="A")], [Stock("P", 2438)], SANS_PERTE)

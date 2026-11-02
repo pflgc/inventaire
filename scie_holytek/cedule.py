@@ -12,11 +12,13 @@ Format MIEbouteuse, relevé sur la cédule d'essai Mec-Inov_0822po.csv :
 """
 import html
 import io
+import re
 
 MAX_MORCEAUX = 30
 # MIEbouteuse refuse un texte trop long (erreur 3163 « The field is too small »).
-# 23 caractères = le plus long vu dans la cédule Mec-Inov; on ne dépasse jamais ça.
+# Testé à la scie : matériel de 23 caractères OK; étiquette de 13 OK, 23 refusée.
 LIMITE_TEXTE = 23
+LIMITE_ETIQUETTE = 13
 MM_PAR_POUCE = 25.4
 
 
@@ -30,18 +32,20 @@ def _convertir(mm, unite):
     return mm / MM_PAR_POUCE if unite == "po" else mm
 
 
-def _nettoyer(texte):
-    texte = texte.replace(";", ",").replace("\r", " ").replace("\n", " ")
-    return texte[:LIMITE_TEXTE]
+def _nettoyer(texte, limite=LIMITE_TEXTE):
+    """Lettres, chiffres, espace et - / . seulement, puis coupé à la limite."""
+    texte = re.sub(r"[^A-Za-z0-9 /.\-]", "", texte.upper())
+    return re.sub(r" +", " ", texte).strip()[:limite]
 
 
 def _joindre(etiquettes):
     """« A / B » comme Mec-Inov si ça entre, sinon « A +1 »."""
+    etiquettes = [_nettoyer(e, LIMITE_ETIQUETTE) for e in etiquettes]
     texte = " / ".join(etiquettes)
     if len(texte) <= LIMITE_TEXTE:
         return texte
     suffixe = f" +{len(etiquettes) - 1}" if len(etiquettes) > 1 else ""
-    return etiquettes[0][: LIMITE_TEXTE - len(suffixe)] + suffixe
+    return etiquettes[0][: LIMITE_ETIQUETTE - len(suffixe)] + suffixe
 
 
 def chargements(resultat):
@@ -84,7 +88,7 @@ def chargements(resultat):
 def instruction_reste(chargement, chute_min=300):
     """Ce que l'opérateur fait du bout restant (court : les champs sont limités)."""
     reste = int(round(chargement.get("reste", 0)))
-    return f">GARDER {reste}" if reste >= chute_min else f">REBUT {reste}"
+    return f"GARDER {reste}" if reste >= chute_min else f"REBUT {reste}"
 
 
 def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
@@ -102,10 +106,10 @@ def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
     ]
     for position, (etiquette, longueur) in enumerate(morceaux, start=1):
         if afficher_reste and position == len(morceaux):
-            # Sur l'étiquette du dernier morceau : l'instruction passe avant le code.
-            instruction = instruction_reste(chargement, chute_min)
-            etiquette = f"{etiquette[: LIMITE_TEXTE - len(instruction) - 1]} {instruction}"
-        champs += [_nettoyer(etiquette), _nombre(_convertir(longueur, unite))]
+            # Pas de place pour les deux : le dernier morceau affiche quoi faire du reste
+            # (son numéro de fenêtre reste sur la feuille du lot et l'étiquette Zebra).
+            etiquette = instruction_reste(chargement, chute_min)
+        champs += [_nettoyer(etiquette, LIMITE_TEXTE), _nombre(_convertir(longueur, unite))]
     champs += [""] * (64 - len(champs))
     return ";".join(champs)
 
