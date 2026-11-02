@@ -243,6 +243,13 @@ class TestSorties(unittest.TestCase):
         self.assertIn("*L-0001*", page)
         self.assertIn("GARDER chute", page)
 
+    def test_nom_de_lot_court(self):
+        from scie_holytek.lot import verifier_no_lot
+        verifier_no_lot("L-0001")
+        for mauvais in ("SOUFFLAGE-6PO-1BARRE", "L 0001", "L-0001 (4)"):
+            with self.assertRaises(ValueError):
+                verifier_no_lot(mauvais)
+
     def test_lot_complet(self):
         unites = [
             Unite("C9001/F1", "fenetre_fixe_pvc", 1200, 900, nb_meneaux_v=1, profondeur=150),

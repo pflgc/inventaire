@@ -16,6 +16,7 @@ import argparse
 import csv
 import json
 import os
+import re
 
 from .cedule import cedule_mi_texte, feuille_operateur_html
 from .optimiseur import ParametresScie, Stock, optimiser
@@ -59,7 +60,20 @@ def lire_chutes(chemin):
     ]
 
 
+# MIEbouteuse garde le nom de la cédule dans sa base : un nom long ou avec
+# espaces/parenthèses (ex. « SOUFFLAGE-6PO-1BARRE (4).csv ») cause l'erreur 3163.
+LIMITE_NOM_LOT = 12
+
+
+def verifier_no_lot(no_lot):
+    if not re.fullmatch(r"[A-Za-z0-9-]{1,%d}" % LIMITE_NOM_LOT, no_lot):
+        raise ValueError(
+            f"Numéro de lot {no_lot!r} : {LIMITE_NOM_LOT} caractères max, lettres, chiffres et - seulement"
+        )
+
+
 def preparer_lot(unites, regles, chutes, no_lot, dossier):
+    verifier_no_lot(no_lot)
     params = ParametresScie(
         **{k: v for k, v in regles.get("parametres_scie", {}).items() if not k.startswith("_")}
     )
