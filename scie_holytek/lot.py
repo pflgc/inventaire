@@ -64,7 +64,13 @@ def preparer_lot(unites, regles, chutes, no_lot, dossier):
         **{k: v for k, v in regles.get("parametres_scie", {}).items() if not k.startswith("_")}
     )
     barres_neuves = [
-        Stock(materiel=b["materiel"], longueur=b["longueur"], empilage=b.get("empilage", 0))
+        Stock(
+            materiel=b["materiel"],
+            longueur=b["longueur"],
+            empilage=b.get("empilage", 0),
+            perte_debut=b.get("perte_debut"),
+            perte_fin=b.get("perte_fin"),
+        )
         for b in regles["barres"]
     ]
     morceaux = morceaux_pour_lot(unites, regles)

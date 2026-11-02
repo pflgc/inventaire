@@ -153,6 +153,25 @@ class TestEmpilage(unittest.TestCase):
             self.assertTrue(all(l == longueurs[0] for l in longueurs))
 
 
+class TestBoutsSales(unittest.TestCase):
+    def test_marges_par_materiau(self):
+        # 2 x 2900 rentrent dans 6000 sans marge, plus avec 250 mm de bout sale au début
+        stocks = [Stock("SALE", 6000, perte_debut=250), Stock("PROPRE", 6000)]
+        morceaux = [m(2900, "SALE"), m(2900, "SALE"), m(2900, "PROPRE"), m(2900, "PROPRE")]
+        res = optimiser(morceaux, stocks, SANS_PERTE)
+        par_mat = {}
+        for p in res.barres:
+            par_mat[p.materiel] = par_mat.get(p.materiel, 0) + 1
+        self.assertEqual(par_mat, {"SALE": 2, "PROPRE": 1})
+
+    def test_jamais_moins_que_la_scie(self):
+        params = ParametresScie(empilage_defaut=1)
+        res = optimiser([m(4500)], [Stock("P", 4670, perte_debut=1)], params)
+        self.assertEqual(res.non_places, [])
+        res = optimiser([m(4540)], [Stock("P", 4670, perte_debut=1)], params)
+        self.assertEqual(len(res.non_places), 1)  # 4540 + 3,5 + 6,35 + 127 > 4670
+
+
 class TestSorties(unittest.TestCase):
     def test_format_mi_reel(self):
         """Relire la cédule d'essai Mec-Inov et la réécrire identique, octet pour octet."""

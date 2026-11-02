@@ -16,7 +16,7 @@ Principe, matériel par matériel :
 
 Tout est en millimètres entiers pour éviter les erreurs d'arrondi.
 """
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 
 @dataclass
@@ -40,6 +40,9 @@ class Stock:
     emplacement: str = ""  # ex. "Rack B / case 3"
     quantite: int = 0  # 0 = illimité (barres neuves)
     empilage: int = 0  # 1 ou 2 barres par coupe; 0 = valeur par défaut de la scie
+    # Bout sale ou abîmé à ne pas utiliser, propre à ce matériau (mm); None = valeur de la scie
+    perte_debut: float = None
+    perte_fin: float = None
 
     @property
     def est_chute(self):
@@ -235,15 +238,24 @@ def optimiser(morceaux, stocks, params=None):
         chutes = [s for s in stocks if s.materiel == materiel and s.est_chute]
         empilage = next((s.empilage for s in neuves if s.empilage), params.empilage_defaut)
 
+        reglage = next((s for s in neuves if s.perte_debut is not None or s.perte_fin is not None), None)
+        if reglage:
+            params_mat = replace(
+                params,
+                perte_debut=max(params.perte_debut, reglage.perte_debut or 0),
+                perte_fin=max(params.perte_fin, reglage.perte_fin or 0),
+            )
+        else:
+            params_mat = params
         groupes, orphelins = _jumeler(liste, empilage)
         lots, chutes_seules = _lots_de_chutes(chutes, empilage)
-        passes, non_places = _passes(groupes, lots, neuves, empilage, params, materiel)
+        passes, non_places = _passes(groupes, lots, neuves, empilage, params_mat, materiel)
         resultat.barres += passes
         resultat.non_places += non_places
         if orphelins:
             # Morceaux sans jumeau : une seule barre dans la scie.
             lots_seuls = [[c] for c in chutes_seules]
-            passes, non_places = _passes([[m] for m in orphelins], lots_seuls, neuves, 1, params, materiel)
+            passes, non_places = _passes([[m] for m in orphelins], lots_seuls, neuves, 1, params_mat, materiel)
             resultat.barres += passes
             resultat.non_places += non_places
     return resultat
