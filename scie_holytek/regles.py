@@ -64,6 +64,7 @@ class Morceau:
     angle_g: int = 90
     angle_d: int = 90
     unite_ref: str = ""
+    code: str = ""  # étiquette courte pour la cédule, ex. "C9001-1016/F1 PH"
 
 
 @dataclass
@@ -121,6 +122,7 @@ def morceaux_pour_unite(unite, regles):
                     angle_g=regle.get("angle_g", 90),
                     angle_d=regle.get("angle_d", 90),
                     unite_ref=unite.reference,
+                    code=f"{unite.reference} {regle.get('code', regle['nom'])}",
                 )
             )
     return morceaux

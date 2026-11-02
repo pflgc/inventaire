@@ -17,7 +17,7 @@ import csv
 import json
 import os
 
-from .cedule import ecrire_cedule_mi, feuille_operateur_html, FORMAT_MI
+from .cedule import cedule_mi_texte, feuille_operateur_html
 from .optimiseur import ParametresScie, Stock, optimiser
 from .regles import Unite, charger_regles, morceaux_pour_lot
 
@@ -66,10 +66,11 @@ def preparer_lot(unites, regles, chutes, no_lot, dossier):
     resultat = optimiser(morceaux, barres_neuves + chutes, params)
 
     os.makedirs(dossier, exist_ok=True)
+    # MIEbouteuse tourne sous Windows 7 : fichier ANSI, sans accents dans les étiquettes.
     with open(
-        os.path.join(dossier, f"{no_lot}.csv"), "w", encoding=FORMAT_MI["encodage"], newline=""
+        os.path.join(dossier, f"{no_lot}.csv"), "w", encoding="cp1252", errors="replace", newline=""
     ) as f:
-        ecrire_cedule_mi(resultat, f)
+        f.write(cedule_mi_texte(resultat, regles.get("unite_cedule", "mm")))
     with open(os.path.join(dossier, f"{no_lot}-feuille.html"), "w", encoding="utf-8") as f:
         f.write(feuille_operateur_html(resultat, no_lot))
     with open(os.path.join(dossier, f"{no_lot}-chutes.csv"), "w", encoding="utf-8", newline="") as f:

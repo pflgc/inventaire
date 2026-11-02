@@ -1,10 +1,13 @@
 {
   "_note": "EXEMPLE. Tous les chiffres de déduction sont À CONFIRMER par Keven avant toute coupe réelle. L=largeur, H=hauteur, N=nb meneaux verticaux, M=nb meneaux horizontaux, P=épaisseur du mur (mm).",
+  "unite_cedule": "mm",
+  "_unite_cedule": "mm ou po : à confirmer dans MIEbouteuse, Configurer > Production",
   "parametres_scie": {
     "trait_scie": 4,
     "perte_debut": 10,
     "perte_fin": 50,
-    "chute_min": 300
+    "chute_min": 300,
+    "max_morceaux": 30
   },
   "barres": [
     {"materiel": "PARCLOSE-PVC-BLANC", "longueur": 5800},
@@ -16,19 +19,19 @@
     "fenetre_fixe_pvc": {
       "description": "Fenêtre fixe PVC, meneaux verticaux optionnels",
       "morceaux": [
-        {"nom": "parclose horizontale", "profil": "PARCLOSE-PVC", "couleur_defaut": "BLANC",
+        {"nom": "parclose horizontale", "code": "PH", "profil": "PARCLOSE-PVC", "couleur_defaut": "BLANC",
          "longueur": "(L - 2*60 - N*70) / (N+1) - 2", "quantite": "2*(N+1)"},
-        {"nom": "parclose verticale", "profil": "PARCLOSE-PVC", "couleur_defaut": "BLANC",
+        {"nom": "parclose verticale", "code": "PV", "profil": "PARCLOSE-PVC", "couleur_defaut": "BLANC",
          "longueur": "H - 2*60 - 2*20", "quantite": "2*(N+1)"},
-        {"nom": "meneau vertical", "profil": "MENEAU-PVC", "couleur_defaut": "BLANC",
+        {"nom": "meneau vertical", "code": "MV", "profil": "MENEAU-PVC", "couleur_defaut": "BLANC",
          "longueur": "H - 2*60 + 6", "quantite": "N"},
-        {"nom": "boiserie horizontale", "profil": "BOISERIE-L4671", "couleur_defaut": "BLANC",
+        {"nom": "boiserie horizontale", "code": "BH", "profil": "BOISERIE-L4671", "couleur_defaut": "BLANC",
          "longueur": "L + 2*80", "quantite": 2, "angle_g": 45, "angle_d": 45},
-        {"nom": "boiserie verticale", "profil": "BOISERIE-L4671", "couleur_defaut": "BLANC",
+        {"nom": "boiserie verticale", "code": "BV", "profil": "BOISERIE-L4671", "couleur_defaut": "BLANC",
          "longueur": "H + 2*80", "quantite": 2, "angle_g": 45, "angle_d": 45},
-        {"nom": "soufflage horizontal", "profil": "SOUFFLAGE-PVC", "couleur_defaut": "BLANC",
+        {"nom": "soufflage horizontal", "code": "SH", "profil": "SOUFFLAGE-PVC", "couleur_defaut": "BLANC",
          "longueur": "L", "quantite": "2 * min(P, 1)"},
-        {"nom": "soufflage vertical", "profil": "SOUFFLAGE-PVC", "couleur_defaut": "BLANC",
+        {"nom": "soufflage vertical", "code": "SV", "profil": "SOUFFLAGE-PVC", "couleur_defaut": "BLANC",
          "longueur": "H - 2*19", "quantite": "2 * min(P, 1)"}
       ]
     }

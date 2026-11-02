@@ -13,7 +13,8 @@ MIEbouteuse ne fait que pousser et couper.
 | `optimiseur.py` | Place les morceaux dans les barres : chutes en inventaire d'abord, puis barres neuves, remplissage exact au mm. |
 | `cedule.py` | Écrit la cédule CSV pour MIEbouteuse et la feuille de l'opérateur (code-barres du lot). **Format CSV provisoire.** |
 | `lot.py` | Tout l'enchaînement en une commande. |
-| `tests/` | 16 tests : `python3 -m unittest scie_holytek.tests.test_scie` |
+| `essai/ESSAI-LGC-mm.csv` | Cédule d'essai à ouvrir dans MIEbouteuse en **Mode Manuel** seulement. |
+| `tests/` | 21 tests (dont la relecture octet pour octet de la cédule Mec-Inov `tests/donnees/Mec-Inov_0822po.csv`) : `python3 -m unittest scie_holytek.tests.test_scie` |
 
 Essai sur 25 fenêtres fictives : **1,6 % de perte** (et 20 m de chutes gardées en
 inventaire), contre **14 %** en coupant les morceaux au fur et à mesure.
@@ -37,8 +38,9 @@ python3 -m scie_holytek.lot unites.csv scie_holytek/regles_exemple.json --lot L-
 
 ## Ce qui manque avant la première coupe réelle
 
-1. **Un vrai fichier .csv de MIEbouteuse** (ou photos d'une cédule ouverte, toutes
-   colonnes) → ajuster `FORMAT_MI` et l'ordre des colonnes dans `cedule.py`.
+1. ~~Format CSV de MIEbouteuse~~ : **fait**, relevé sur la cédule d'essai Mec-Inov
+   (64 champs : reste ; matériel ; longueur barre ; nb barres ; 30 × étiquette ; longueur).
+   Reste à savoir si la scie est réglée en **mm ou en pouces** (`unite_cedule`).
 2. **Onglet Configurer → Production** de MIEbouteuse : trait de scie, pertes de bout.
 3. **Par profilé** : longueur des barres, angle de coupe, chute minimale.
 4. **Déductions réelles** (Keven) pour chaque type de produit : remplacer les

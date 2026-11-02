@@ -17,6 +17,7 @@ class ParametresScie:
     perte_debut: int = 10  # bout coupé pour équarrir la barre, mm (À CONFIRMER)
     perte_fin: int = 50  # bout que la butée ne peut pas pousser, mm (À CONFIRMER)
     chute_min: int = 300  # plus court que ça = rebut (À CONFIRMER)
+    max_morceaux: int = 30  # limite d'une ligne de cédule MIEbouteuse
 
 
 @dataclass
@@ -108,7 +109,9 @@ def _remplir(barre_long, morceaux, params):
     if capacite <= 0:
         return []
     poids = [int(round(m.longueur)) + params.trait_scie for m in morceaux]
-    return _meilleur_remplissage(poids, capacite)
+    choisis = _meilleur_remplissage(poids, capacite)
+    # Rare (morceaux très courts) : on garde les plus longs, le reste va à la barre suivante.
+    return sorted(choisis, key=lambda i: -poids[i])[: params.max_morceaux]
 
 
 def optimiser(morceaux, stocks, params=None):

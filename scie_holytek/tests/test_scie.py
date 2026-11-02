@@ -5,7 +5,7 @@ import random
 import tempfile
 import unittest
 
-from scie_holytek.cedule import cedule_mi_texte, feuille_operateur_html
+from scie_holytek.cedule import cedule_mi_texte, chargements, feuille_operateur_html, ligne_mi
 from scie_holytek.lot import preparer_lot
 from scie_holytek.optimiseur import ParametresScie, Stock, optimiser
 from scie_holytek.regles import Morceau, Unite, charger_regles, evaluer, morceaux_pour_unite
@@ -15,8 +15,9 @@ REGLES = charger_regles(os.path.join(ICI, "..", "regles_exemple.json"))
 SANS_PERTE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300)
 
 
-def m(longueur, materiel="P"):
-    return Morceau(materiel=materiel, longueur=longueur, etiquette=f"{longueur}")
+def m(longueur, materiel="P", code=None):
+    code = code or f"X-{longueur}"
+    return Morceau(materiel=materiel, longueur=longueur, etiquette=code, code=code)
 
 
 class TestFormules(unittest.TestCase):
@@ -104,12 +105,50 @@ class TestOptimiseur(unittest.TestCase):
 
 
 class TestSorties(unittest.TestCase):
-    def test_cedule_csv(self):
-        res = optimiser([m(1000.5), m(800)], [Stock("P", 6000)], SANS_PERTE)
-        lignes = list(csv.reader(io.StringIO(cedule_mi_texte(res)), delimiter=";"))
-        self.assertEqual(lignes[0][:6], ["CHARGEMENT", "MATERIEL", "BARRE_NO", "BARRE_LONG", "NBPIECES", "INFO"])
-        self.assertEqual(lignes[1][:6], ["1", "P", "1", "6000", "2", "NEUVE"])
-        self.assertEqual(lignes[1][6:], ["1000,5", "800,0"])
+    def test_format_mi_reel(self):
+        """Relire la cédule d'essai Mec-Inov et la réécrire identique, octet pour octet."""
+        with open(os.path.join(ICI, "donnees", "Mec-Inov_0822po.csv"), "rb") as f:
+            original = f.read().decode("ascii")
+        for ligne in original.split("\r\n")[:-1]:
+            champs = ligne.split(";")
+            paires = [c for c in champs[4:]]
+            morceaux = [
+                (paires[i], float(paires[i + 1])) for i in range(0, len(paires), 2) if paires[i]
+            ]
+            chargement = {
+                "reste": float(champs[0]),
+                "materiel": champs[1],
+                "longueur_barre": float(champs[2]),
+                "nb": int(champs[3]),
+                "morceaux": morceaux,
+            }
+            self.assertEqual(ligne_mi(chargement), ligne)
+
+    def test_cedule_groupe_les_barres_identiques(self):
+        morceaux = [m(3100, code="A"), m(2800, code="B"), m(3100, code="C"), m(2800, code="D")]
+        res = optimiser(morceaux, [Stock("P", 6000)], SANS_PERTE)
+        texte = cedule_mi_texte(res)
+        self.assertTrue(texte.endswith("\r\n"))
+        lignes = texte.split("\r\n")[:-1]
+        self.assertEqual(len(lignes), 1)
+        champs = lignes[0].split(";")
+        self.assertEqual(len(champs), 64)
+        self.assertEqual(champs[:8], ["100", "P", "6000", "2", "A / C", "3100", "B / D", "2800"])
+
+    def test_cedule_en_pouces(self):
+        res = optimiser([m(1219.2, code="A")], [Stock("P", 2438)], SANS_PERTE)
+        champs = cedule_mi_texte(res, unite="po").split(";")
+        self.assertEqual(champs[2], "95.9843")
+        self.assertEqual(champs[5], "48")
+
+    def test_chute_seule_sur_sa_ligne(self):
+        chute = Stock("P", 3000, reference="CH-1", quantite=1)
+        res = optimiser([m(2900), m(2900)], [Stock("P", 3000), chute], SANS_PERTE)
+        self.assertEqual([c["nb"] for c in chargements(res)], [1, 1])
+
+    def test_max_30_morceaux_par_barre(self):
+        res = optimiser([m(50) for _ in range(40)], [Stock("P", 6000)], SANS_PERTE)
+        self.assertEqual(sorted(len(b.morceaux) for b in res.barres), [10, 30])
 
     def test_feuille_operateur(self):
         res = optimiser([m(1000)], [Stock("P", 6000)], SANS_PERTE)
