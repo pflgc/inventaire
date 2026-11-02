@@ -183,6 +183,12 @@ class TestEssaiReel(unittest.TestCase):
     def test_seulement_le_bout_sale_coupe_en_premier(self):
         self.assertEqual(self.champs[0], "10")  # et non plus 383 (15,5 po jetés au début)
 
+    def test_jamais_plus_de_3_po_et_demi_au_debut(self):
+        with self.assertRaises(ValueError):
+            ParametresScie(rognure_debut=100)
+        res = optimiser([m(1000, "S")], [Stock("S", 4670, perte_debut=500)], ParametresScie(empilage_defaut=1))
+        self.assertLessEqual(float(cedule_mi_texte(res).split(";")[0]), 88.9)
+
     def test_un_huitieme_ajoute_a_chaque_morceau(self):
         self.assertEqual(self.champs[5::2][:3], ["1833.175", "1528.175", "918.175"])
 

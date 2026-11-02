@@ -36,9 +36,16 @@ class ParametresScie:
     max_morceaux: int = 30  # limite d'une ligne de cédule MIEbouteuse
     empilage_defaut: int = 2  # barres coupées l'une par-dessus l'autre
 
+    rognure_max: float = 88.9  # 3,5 po : jamais plus jeté au début de la barre
+
     def __post_init__(self):
         if self.perte_debut is None:
             self.perte_debut = self.rognure_debut + self.offset_premiere_coupe + self.trait_scie
+        if self.rognure > self.rognure_max:
+            raise ValueError(
+                f"Bout coupé au début : {self.rognure:.0f} mm, plus que le maximum de "
+                f"{self.rognure_max:.0f} mm (3,5 po)"
+            )
 
     @property
     def rognure(self):
@@ -262,7 +269,10 @@ def optimiser(morceaux, stocks, params=None):
         if reglage:
             params_mat = replace(
                 params,
-                perte_debut=max(params.perte_debut, reglage.perte_debut or 0),
+                perte_debut=min(
+                    max(params.perte_debut, reglage.perte_debut or 0),
+                    params.rognure_max + params.offset_premiere_coupe + params.trait_scie,
+                ),
                 perte_fin=max(params.perte_fin, reglage.perte_fin or 0),
             )
         else:
