@@ -21,9 +21,10 @@ from dataclasses import dataclass, field
 
 @dataclass
 class ParametresScie:
-    trait_scie: int = 4  # épaisseur de lame, mm (À CONFIRMER)
-    perte_debut: int = 10  # bout coupé pour équarrir la barre, mm (À CONFIRMER)
-    perte_fin: int = 50  # bout que la butée ne peut pas pousser, mm (À CONFIRMER)
+    # Valeurs lues dans MIEbouteuse, Configurer > Production (affichées en pouces).
+    trait_scie: float = 3.5  # Largeur du trait de scie : 0,138 po
+    perte_debut: float = 6.35  # Offset de première coupe : 0,250 po
+    perte_fin: float = 127  # Offset de chargement des barres : 5,000 po (pris par la butée)
     chute_min: int = 300  # plus court que ça = rebut (À CONFIRMER)
     max_morceaux: int = 30  # limite d'une ligne de cédule MIEbouteuse
     empilage_defaut: int = 2  # barres coupées l'une par-dessus l'autre
@@ -137,11 +138,12 @@ def _meilleur_remplissage(longueurs, capacite):
 
 def _remplir(barre_long, groupes, params):
     """Choisit les groupes (morceaux jumeaux) à couper dans une passe."""
-    capacite = barre_long - params.perte_debut - params.perte_fin
+    # Au dixième de mm près (le trait de scie est de 3,5 mm), arrondi du côté sûr.
+    capacite = int((barre_long - params.perte_debut - params.perte_fin) * 10)
     if capacite <= 0:
         return []
     # Chaque coupe consomme le morceau + un trait de scie.
-    poids = [int(round(g[0].longueur)) + params.trait_scie for g in groupes]
+    poids = [int(round((g[0].longueur + params.trait_scie) * 10 + 0.4999)) for g in groupes]
     choisis = _meilleur_remplissage(poids, capacite)
     # Rare (morceaux très courts) : on garde les plus longs, le reste va à la passe suivante.
     return sorted(choisis, key=lambda i: -poids[i])[: params.max_morceaux]
@@ -201,16 +203,14 @@ def _passes(groupes, lots_chutes, neuves, empilage, params, materiel):
         places = sorted((groupes[i] for i in indices), key=lambda g: -g[0].longueur)
         for i in sorted(indices, reverse=True):
             del groupes[i]
-        consomme = params.perte_debut + sum(
-            int(round(g[0].longueur)) + params.trait_scie for g in places
-        )
+        consomme = params.perte_debut + sum(g[0].longueur + params.trait_scie for g in places)
         passes.append(
             BarreCoupee(
                 materiel=materiel,
                 longueur_barre=min(s.longueur for s in sources),
                 copies=[[g[k] for g in places] for k in range(empilage)],
                 sources=list(sources),
-                restes=[max(s.longueur - consomme, 0) for s in sources],
+                restes=[max(int(s.longueur - consomme), 0) for s in sources],
                 chute_min=params.chute_min,
             )
         )

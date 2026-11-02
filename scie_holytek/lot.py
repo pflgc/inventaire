@@ -60,7 +60,9 @@ def lire_chutes(chemin):
 
 
 def preparer_lot(unites, regles, chutes, no_lot, dossier):
-    params = ParametresScie(**regles.get("parametres_scie", {}))
+    params = ParametresScie(
+        **{k: v for k, v in regles.get("parametres_scie", {}).items() if not k.startswith("_")}
+    )
     barres_neuves = [
         Stock(materiel=b["materiel"], longueur=b["longueur"], empilage=b.get("empilage", 0))
         for b in regles["barres"]

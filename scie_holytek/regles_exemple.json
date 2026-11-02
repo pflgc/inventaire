@@ -1,11 +1,12 @@
 {
   "_note": "EXEMPLE. Tous les chiffres de déduction sont À CONFIRMER par Keven avant toute coupe réelle. L=largeur, H=hauteur, N=nb meneaux verticaux, M=nb meneaux horizontaux, P=épaisseur du mur (mm).",
   "unite_cedule": "mm",
-  "_unite_cedule": "mm ou po : à confirmer dans MIEbouteuse, Configurer > Production",
+  "_unite_cedule": "La scie est réglée en Métrique (mm)",
   "parametres_scie": {
-    "trait_scie": 4,
-    "perte_debut": 10,
-    "perte_fin": 50,
+    "_calibrage": "Lu dans MIEbouteuse > Configurer > Production : trait 0,138 po, 1re coupe 0,250 po, chargement 5,000 po",
+    "trait_scie": 3.5,
+    "perte_debut": 6.35,
+    "perte_fin": 127,
     "chute_min": 300,
     "max_morceaux": 30,
     "empilage_defaut": 2

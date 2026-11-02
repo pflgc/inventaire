@@ -93,7 +93,9 @@ def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
         _nombre(_convertir(chargement["longueur_barre"], unite)),
         str(chargement["nb"]),
     ]
-    for etiquette, longueur in morceaux:
+    for position, (etiquette, longueur) in enumerate(morceaux, start=1):
+        if afficher_reste and position == len(morceaux):
+            etiquette = f"{etiquette} >> {instruction_reste(chargement, chute_min)}"
         champs += [_nettoyer(etiquette), _nombre(_convertir(longueur, unite))]
     champs += [""] * (64 - len(champs))
     return ";".join(champs)
