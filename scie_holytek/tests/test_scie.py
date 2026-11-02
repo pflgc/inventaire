@@ -12,8 +12,8 @@ from scie_holytek.regles import Morceau, Unite, charger_regles, evaluer, morceau
 
 ICI = os.path.dirname(__file__)
 REGLES = charger_regles(os.path.join(ICI, "..", "regles_exemple.json"))
-SANS_PERTE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300, empilage_defaut=1)
-EMPILE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300, empilage_defaut=2)
+SANS_PERTE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300, empilage_defaut=1, correction_longueur=0)
+EMPILE = ParametresScie(trait_scie=0, perte_debut=0, perte_fin=0, chute_min=300, empilage_defaut=2, correction_longueur=0)
 
 
 def m(longueur, materiel="P", code=None):
@@ -172,6 +172,26 @@ class TestBoutsSales(unittest.TestCase):
         self.assertEqual(len(res.non_places), 1)  # 4540 + 3,5 + 6,35 + 127 > 4670
 
 
+class TestEssaiReel(unittest.TestCase):
+    """Constats de l'essai du soufflage 6 po (barre de 4670 mm)."""
+
+    def setUp(self):
+        ms = [m(L, "SOUFFLAGE 6PO", code=c) for L, c in [(1830, "72"), (1525, "60"), (915, "36")]]
+        self.res = optimiser(ms, [Stock("SOUFFLAGE 6PO", 4670)], ParametresScie(empilage_defaut=1))
+        self.champs = cedule_mi_texte(self.res).split(";")
+
+    def test_seulement_le_bout_sale_coupe_en_premier(self):
+        self.assertEqual(self.champs[0], "10")  # et non plus 383 (15,5 po jetés au début)
+
+    def test_un_huitieme_ajoute_a_chaque_morceau(self):
+        self.assertEqual(self.champs[5::2][:3], ["1833.175", "1528.175", "918.175"])
+
+    def test_le_reste_sort_a_la_fin_cote_butee(self):
+        passe = self.res.barres[0]
+        self.assertGreaterEqual(passe.reste, 127)  # jamais une dernière coupe trop mince
+        self.assertEqual(passe.reste, 369)
+
+
 class TestSorties(unittest.TestCase):
     def test_format_mi_reel(self):
         """Relire la cédule d'essai Mec-Inov et la réécrire identique, octet pour octet."""
@@ -184,7 +204,7 @@ class TestSorties(unittest.TestCase):
                 (paires[i], float(paires[i + 1])) for i in range(0, len(paires), 2) if paires[i]
             ]
             chargement = {
-                "reste": float(champs[0]),
+                "rognure": float(champs[0]),
                 "materiel": champs[1],
                 "longueur_barre": float(champs[2]),
                 "nb": int(champs[3]),
@@ -201,7 +221,7 @@ class TestSorties(unittest.TestCase):
         self.assertEqual(len(lignes), 1)
         champs = lignes[0].split(";")
         self.assertEqual(len(champs), 64)
-        self.assertEqual(champs[:8], ["100", "P", "6000", "2", "A / C", "3100", "B / D", "2800"])
+        self.assertEqual(champs[:8], ["0", "P", "6000", "2", "A / C", "3100", "B / D", "2800"])
 
     def test_instruction_reste_sur_derniere_etiquette(self):
         rebut = optimiser([m(5900, code="A")], [Stock("P", 6000)], SANS_PERTE)

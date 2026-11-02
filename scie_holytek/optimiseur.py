@@ -23,11 +23,27 @@ from dataclasses import dataclass, field, replace
 class ParametresScie:
     # Valeurs lues dans MIEbouteuse, Configurer > Production (affichées en pouces).
     trait_scie: float = 3.5  # Largeur du trait de scie : 0,138 po
-    perte_debut: float = 6.35  # Offset de première coupe : 0,250 po
+    offset_premiere_coupe: float = 6.35  # Offset de première coupe : 0,250 po
     perte_fin: float = 127  # Offset de chargement des barres : 5,000 po (pris par la butée)
+    # Constaté à la scie (essai soufflage 6 po) :
+    # - MIEbouteuse (ordre de production inversé) coupe d'abord la longueur de la
+    #   1re colonne de la cédule : on y met seulement le bout sale à enlever;
+    # - chaque morceau sortait 1/8 po trop court : on l'ajoute à chaque longueur.
+    rognure_debut: float = 10  # bout sale coupé en premier, mm
+    correction_longueur: float = 3.175  # 1/8 po ajouté à chaque morceau envoyé
+    perte_debut: float = None  # total consommé au début; calculé si absent
     chute_min: int = 300  # plus court que ça = rebut (À CONFIRMER)
     max_morceaux: int = 30  # limite d'une ligne de cédule MIEbouteuse
     empilage_defaut: int = 2  # barres coupées l'une par-dessus l'autre
+
+    def __post_init__(self):
+        if self.perte_debut is None:
+            self.perte_debut = self.rognure_debut + self.offset_premiere_coupe + self.trait_scie
+
+    @property
+    def rognure(self):
+        """Ce qu'on écrit en 1re colonne : le début consommé moins ce que la scie ajoute."""
+        return max(self.perte_debut - self.offset_premiere_coupe - self.trait_scie, 0)
 
 
 @dataclass
@@ -59,6 +75,8 @@ class BarreCoupee:
     sources: list  # un Stock par barre de la passe
     restes: list = field(default_factory=list)  # bout restant de chaque barre, mm
     chute_min: int = 300
+    rognure: float = 0  # bout sale coupé en premier (1re colonne de la cédule)
+    correction: float = 0  # ajouté à chaque longueur envoyée à la scie
 
     @property
     def morceaux(self):
@@ -215,6 +233,8 @@ def _passes(groupes, lots_chutes, neuves, empilage, params, materiel):
                 sources=list(sources),
                 restes=[max(int(s.longueur - consomme), 0) for s in sources],
                 chute_min=params.chute_min,
+                rognure=params.rognure,
+                correction=params.correction_longueur,
             )
         )
     non_places = [m for g in groupes for m in g]

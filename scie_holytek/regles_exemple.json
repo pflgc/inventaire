@@ -5,8 +5,11 @@
   "parametres_scie": {
     "_calibrage": "Lu dans MIEbouteuse > Configurer > Production : trait 0,138 po, 1re coupe 0,250 po, chargement 5,000 po",
     "trait_scie": 3.5,
-    "perte_debut": 6.35,
+    "offset_premiere_coupe": 6.35,
     "perte_fin": 127,
+    "_essai": "Essai soufflage 6 po : la 1re colonne est coupée en premier (bout sale), et chaque morceau sortait 1/8 po trop court",
+    "rognure_debut": 10,
+    "correction_longueur": 3.175,
     "chute_min": 300,
     "max_morceaux": 30,
     "empilage_defaut": 2

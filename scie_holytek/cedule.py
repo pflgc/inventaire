@@ -3,10 +3,11 @@
 Format MIEbouteuse, relevé sur la cédule d'essai Mec-Inov_0822po.csv :
     - pas d'en-tête, séparateur « ; », fins de ligne CRLF, ASCII, point décimal ;
     - une ligne par « chargement » = un groupe de barres identiques ;
-    - toujours 64 champs : reste ; matériel ; longueur barre ; nb barres ;
+    - toujours 64 champs : rognure ; matériel ; longueur barre ; nb barres ;
       puis 30 paires étiquette ; longueur (cases vides au besoin) ;
-    - reste : bout restant par barre (affiché seulement ; Mec-Inov y ajoute parfois
-      une allocation selon le matériel, ex. AG 2x2 : 1.625 au lieu de 4.625) ;
+    - rognure : longueur coupée EN PREMIER (ordre de production inversé), plus
+      l'offset de première coupe; on n'y met que le bout sale à enlever ;
+    - chaque longueur envoyée sort 1/8 po plus courte : on l'ajoute (essai réel).
     - quand plusieurs barres sont groupées, les étiquettes d'une même position
       sont jointes par « / » (ex. « MPPTC-0016 / MPPTC-0095 »).
 """
@@ -73,6 +74,8 @@ def chargements(resultat):
         groupe["empilage"] = passes[0].empilage
         groupe["sources"] = [s for p in passes for s in p.sources]
         groupe["reste"] = passes[0].reste
+        groupe["rognure"] = passes[0].rognure
+        groupe["correction"] = passes[0].correction
         groupe["morceaux"] = []
         for position, morceau in enumerate(passes[0].morceaux):
             etiquettes = []
@@ -95,11 +98,12 @@ def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
     morceaux = chargement["morceaux"]
     if len(morceaux) > MAX_MORCEAUX:
         raise ValueError(f"MIEbouteuse accepte au plus {MAX_MORCEAUX} morceaux par barre")
-    # Mec-Inov y met le reste calculé par son propre optimiseur ; nous, le vrai bout
-    # restant après les traits de scie (ce que l'opérateur aura dans les mains).
-    reste = chargement.get("reste", chargement["longueur_barre"] - sum(l for _, l in morceaux))
+    # 1re colonne : MIEbouteuse coupe cette longueur EN PREMIER (ordre inversé).
+    # On y met seulement le bout sale; le vrai reste sort en dernier, côté butée.
+    rognure = chargement.get("rognure", chargement["longueur_barre"] - sum(l for _, l in morceaux))
+    correction = chargement.get("correction", 0)
     champs = [
-        _nombre(_convertir(reste, unite)),
+        _nombre(_convertir(rognure, unite)),
         _nettoyer(chargement["materiel"]),
         _nombre(_convertir(chargement["longueur_barre"], unite)),
         str(chargement["nb"]),
@@ -109,7 +113,10 @@ def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
             # Pas de place pour les deux : le dernier morceau affiche quoi faire du reste
             # (son numéro de fenêtre reste sur la feuille du lot et l'étiquette Zebra).
             etiquette = instruction_reste(chargement, chute_min)
-        champs += [_nettoyer(etiquette, LIMITE_TEXTE), _nombre(_convertir(longueur, unite))]
+        champs += [
+            _nettoyer(etiquette, LIMITE_TEXTE),
+            _nombre(_convertir(longueur + correction, unite)),
+        ]
     champs += [""] * (64 - len(champs))
     return ";".join(champs)
 
