@@ -155,8 +155,8 @@ class TestEmpilage(unittest.TestCase):
 
 class TestBoutsSales(unittest.TestCase):
     def test_marges_par_materiau(self):
-        # 2 x 2900 rentrent dans 6000 sans marge, plus avec 250 mm de bout sale au début
-        stocks = [Stock("SALE", 6000, perte_debut=250), Stock("PROPRE", 6000)]
+        # 2 x 2900 rentrent dans 6000 sans marge, plus avec 250 mm de bout sale à la fin
+        stocks = [Stock("SALE", 6000, perte_fin=250), Stock("PROPRE", 6000)]
         morceaux = [m(2900, "SALE"), m(2900, "SALE"), m(2900, "PROPRE"), m(2900, "PROPRE")]
         res = optimiser(morceaux, stocks, SANS_PERTE)
         par_mat = {}
