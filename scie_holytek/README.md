@@ -72,3 +72,38 @@ Plan pour ajouter la Holytek :
 - **Rapport** : % de perte et $ de rebuts par semaine, profilé, opérateur ; chutes
   qui dorment depuis plus de 90 jours.
 - **Pont scie** : même mécanisme que pour la PRODS20, avec un 2ᵉ dossier.
+
+## Demandes de l'usine (2 nov.) : retailles, coupe tardive, modifications
+
+### 1. Inventaire des retailles et « quoi charger » (même principe que Protomach)
+- Chaque retaille ≥ chute minimale reçoit un numéro (`CH-0142`), une longueur et un
+  emplacement (rack / case), imprimés sur une étiquette Zebra au moment de la coupe.
+- L'optimiseur pige d'abord dans les retailles (par paires si empilées).
+- **À la scie** : le champ Matériel affiche `CH-0142 SOUFFLAGE 6PO` (fait,
+  testé) ; la feuille du lot dit où la trouver (`B3`). Une barre neuve affiche
+  seulement le matériel. Le dernier morceau dit quoi faire du reste
+  (`GARDER 369` / `REBUT 73`).
+- **Dans Odoo** : modèle `lgc.scie.chute` (disponible / réservée / utilisée /
+  rebutée), scan de l'étiquette pour confirmer qu'on a pris la bonne, rapport des
+  retailles qui dorment.
+
+### 2. Soufflage et boiserie coupés le plus tard possible
+Le client change souvent d'idée (soufflage 6 po → 9 po). Donc :
+- Ces profilés ne sont **pas** mis dans un lot de scie à la confirmation de la vente.
+- Le lot de finition est créé quand les fenêtres de la commande sont presque toutes
+  terminées (ex. ≥ 80 % des unités soudées, ou date de livraison à J-3 : seuil à
+  choisir).
+- Les longueurs sont **recalculées au moment de créer le lot**, à partir de la
+  commande telle qu'elle est ce jour-là (largeur de soufflage, couleur, options).
+- Liste « Prêt à couper » dans Odoo : commandes dont la finition peut partir.
+
+### 3. Modifier, ajouter, créditer facilement
+`modifier_lot()` (fait, testé) :
+- les passes **déjà coupées** ne bougent pas ;
+- les morceaux retirés pas encore coupés disparaissent, les ajouts sont ajoutés,
+  tout le reste est ré-optimisé et une nouvelle cédule est générée ;
+- un morceau retiré **déjà coupé** est retourné « à créditer » et devient une
+  retaille en inventaire (`pieces_en_inventaire()`), réutilisable au prochain lot
+  ou pour la vente comptoir.
+Dans Odoo : boutons *Ajouter une fenêtre*, *Retirer*, *Changer le soufflage* sur le
+lot, qui appellent `modifier_lot()` et redéposent la cédule.

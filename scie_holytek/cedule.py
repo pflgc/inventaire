@@ -102,9 +102,14 @@ def ligne_mi(chargement, unite="mm", afficher_reste=False, chute_min=300):
     # On y met seulement le bout sale; le vrai reste sort en dernier, côté butée.
     rognure = chargement.get("rognure", chargement["longueur_barre"] - sum(l for _, l in morceaux))
     correction = chargement.get("correction", 0)
+    materiel = chargement["materiel"]
+    sources = chargement.get("sources", [])
+    if sources and sources[0].est_chute:
+        # Une retaille : son numéro passe en premier, c'est ce que l'opérateur doit aller chercher.
+        materiel = f"{'+'.join(s.reference for s in sources)} {materiel}"
     champs = [
         _nombre(_convertir(rognure, unite)),
-        _nettoyer(chargement["materiel"]),
+        _nettoyer(materiel),
         _nombre(_convertir(chargement["longueur_barre"], unite)),
         str(chargement["nb"]),
     ]

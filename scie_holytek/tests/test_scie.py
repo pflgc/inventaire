@@ -7,7 +7,7 @@ import unittest
 
 from scie_holytek.cedule import cedule_mi_texte, chargements, feuille_operateur_html, ligne_mi
 from scie_holytek.lot import preparer_lot
-from scie_holytek.optimiseur import ParametresScie, Stock, optimiser
+from scie_holytek.optimiseur import ParametresScie, Stock, modifier_lot, optimiser, pieces_en_inventaire
 from scie_holytek.regles import Morceau, Unite, charger_regles, evaluer, morceaux_pour_unite
 
 ICI = os.path.dirname(__file__)
@@ -196,6 +196,52 @@ class TestEssaiReel(unittest.TestCase):
         passe = self.res.barres[0]
         self.assertGreaterEqual(passe.reste, 127)  # jamais une dernière coupe trop mince
         self.assertEqual(passe.reste, 369)
+
+
+class TestModifierLot(unittest.TestCase):
+    """Le client passe du soufflage 6 po au 9 po à la dernière minute."""
+
+    def setUp(self):
+        self.stocks = [Stock("S6", 4670), Stock("S9", 4670)]
+        self.p = ParametresScie(empilage_defaut=1)
+        f1 = [m(1500, "S6", code="F1 SH"), m(1200, "S6", code="F1 SV")]
+        f2 = [m(1400, "S6", code="F2 SH"), m(1100, "S6", code="F2 SV")]
+        self.f2_en_9 = [m(1400, "S9", code="F2 SH"), m(1100, "S9", code="F2 SV")]
+        f3 = [m(4000, "S6", code="F3 SH")]
+        self.lot = optimiser(f1 + f2 + f3, self.stocks, self.p)
+
+    def test_rien_de_coupe(self):
+        nouveau, credit = modifier_lot(
+            self.lot, [], self.stocks, self.p,
+            retirer=lambda x: x.code.startswith("F2"), ajouter=self.f2_en_9,
+        )
+        self.assertEqual(credit, [])
+        codes = {(x.materiel, x.code) for p in nouveau.barres for x in p.morceaux}
+        self.assertIn(("S9", "F2 SH"), codes)
+        self.assertNotIn(("S6", "F2 SH"), codes)
+
+    def test_deja_coupe_va_en_inventaire(self):
+        avec_f2 = next(p for p in self.lot.barres if any(x.code == "F2 SH" for x in p.morceaux))
+        nouveau, credit = modifier_lot(
+            self.lot, [avec_f2], self.stocks, self.p,
+            retirer=lambda x: x.code.startswith("F2"), ajouter=self.f2_en_9,
+        )
+        self.assertIs(nouveau.barres[0], avec_f2)  # la passe coupée ne bouge pas
+        self.assertEqual(sorted(x.code for x in credit), sorted(x.code for x in avec_f2.morceaux if x.code.startswith("F2")))
+        retailles = pieces_en_inventaire(credit)
+        self.assertTrue(all(r.est_chute and r.materiel == "S6" for r in retailles))
+
+    def test_ajouter_une_fenetre(self):
+        nouveau, _ = modifier_lot(self.lot, [], self.stocks, self.p, ajouter=[m(900, "S6", code="F4 SH")])
+        self.assertIn("F4 SH", [x.code for p in nouveau.barres for x in p.morceaux])
+
+
+class TestChargement(unittest.TestCase):
+    def test_retaille_affichee_a_la_scie(self):
+        chute = Stock("SOUFFLAGE 6PO", 2000, reference="CH-0142", emplacement="B3", quantite=1)
+        res = optimiser([m(1500, "SOUFFLAGE 6PO")], [Stock("SOUFFLAGE 6PO", 4670), chute], ParametresScie(empilage_defaut=1))
+        self.assertEqual(cedule_mi_texte(res).split(";")[1], "CH-0142 SOUFFLAGE 6PO")
+        self.assertIn("B3", feuille_operateur_html(res, "L-1"))
 
 
 class TestSorties(unittest.TestCase):

@@ -289,3 +289,37 @@ def optimiser(morceaux, stocks, params=None):
             resultat.barres += passes
             resultat.non_places += non_places
     return resultat
+
+
+def modifier_lot(resultat, passes_coupees, stocks, params=None, retirer=None, ajouter=()):
+    """Modifier un lot déjà lancé : ajouter, retirer ou changer des morceaux.
+
+    Les passes déjà coupées ne bougent pas. Tout le reste est ré-optimisé avec
+    les changements. Un morceau retiré qui était déjà coupé n'est pas perdu :
+    il est retourné dans `a_crediter`, pour être remis en inventaire (ex. le
+    soufflage 6 po coupé avant que le client passe au 9 po).
+
+    passes_coupees : les BarreCoupee du lot déjà passées à la scie
+    retirer        : fonction morceau -> bool (ex. tous les morceaux d'une fenêtre)
+    ajouter        : nouveaux morceaux (ex. la fenêtre modifiée)
+    Retourne (nouveau Resultat, morceaux à créditer en inventaire).
+    """
+    retirer = retirer or (lambda m: False)
+    coupees = [p for p in resultat.barres if any(p is c for c in passes_coupees)]
+    a_couper = [p for p in resultat.barres if not any(p is c for c in coupees)]
+
+    restants = [m for p in a_couper for copie in p.copies for m in copie] + resultat.non_places
+    a_crediter = [m for p in coupees for copie in p.copies for m in copie if retirer(m)]
+    restants = [m for m in restants if not retirer(m)] + list(ajouter)
+
+    nouveau = optimiser(restants, stocks, params)
+    nouveau.barres = coupees + nouveau.barres
+    return nouveau, a_crediter
+
+
+def pieces_en_inventaire(morceaux):
+    """Les morceaux crédités deviennent des retailles réutilisables au prochain lot."""
+    return [
+        Stock(materiel=m.materiel, longueur=int(m.longueur), reference=f"PC-{m.code}"[:20], quantite=1)
+        for m in morceaux
+    ]
